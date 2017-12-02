@@ -1,11 +1,8 @@
-minmax :: [Int] -> (Int, Int)
-minmax numbers = (minimum numbers, maximum numbers)
-
-difference :: (Int, Int) -> Int
-difference (min, max) = max - min
+minmaxDifference :: [Int] -> Int
+minmaxDifference numbers = maximum numbers - minimum numbers
 
 checksumA :: [[Int]] -> Int
-checksumA = sum . map (difference . minmax)
+checksumA = sum . map minmaxDifference
 
 --
 
