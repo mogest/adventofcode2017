@@ -45,9 +45,9 @@ execute registers command
 run :: [Command] -> (Int, Int)
 run commands = (largestAtEnd, largestAtAnyTime)
   where
-    largestAtAnyTime = maximum $ concat $ map Map.elems history
-    largestAtEnd = maximum $ Map.elems $ last history
-    history = scanl execute Map.empty commands
+    largestAtAnyTime = maximum $ concat history
+    largestAtEnd = maximum $ last history
+    history = map Map.elems $ scanl execute Map.empty commands
 
 parse :: [String] -> Command
 parse (a:b:c:"if":d:e:f:[]) = Command a b (read c) d e (read f)
