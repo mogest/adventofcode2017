@@ -25,8 +25,8 @@ blockCount = length
 buildDisk :: String -> Disk
 buildDisk key = Set.fromList $ concat $ map (build . (id &&& hash)) [0 .. 127]
   where
-    hash number          = map (== '1') $ toBinary $ knotHash $ key ++ "-" ++ (show number)
-    build (row, columns) = map (cell row) $ filter snd $ zip [0 ..] columns
+    hash number          = toBinary $ knotHash $ key ++ "-" ++ (show number)
+    build (row, digits)  = map (cell row) $ filter ((== '1') . snd) $ zip [0 ..] digits
     cell row (column, _) = (row, column)
 
 run :: String -> (Int, Int)
