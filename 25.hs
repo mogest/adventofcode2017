@@ -1,9 +1,9 @@
 import qualified Data.Map as Map
 
 data Action = Action
-  { write :: Int
-  , move :: Int
-  , next :: String
+  { writeValue :: Int
+  , movePointer :: Int
+  , nextState :: String
   }
 
 type Machine = Map.Map (String, Int) Action
@@ -18,60 +18,51 @@ data ParseState = ParseState
   , machine :: Machine
   }
 
-execute :: String -> Int -> Int -> Machine -> Tape -> Tape
-execute state 0 pointer machine tape = tape
-execute state steps pointer machine tape =
+execute :: String -> Int -> Int -> Tape -> Machine -> Tape
+execute _ 0 _ tape _ = tape
+execute state steps pointer tape machine =
   execute
-    (next action)
+    nextState
     (steps - 1)
-    (pointer + move action)
+    (pointer + movePointer)
+    (Map.insert pointer writeValue tape)
     machine
-    (Map.insert pointer (write action) tape)
   where
-    action = machine Map.! (state, valueAt pointer tape)
+    Action { nextState = nextState
+           , movePointer = movePointer
+           , writeValue = writeValue
+           } = machine Map.! (state, valueAt pointer tape)
     valueAt = Map.findWithDefault 0
 
 run :: ParseState -> Int
 run ps =
   length $
   filter (== 1) $
-  Map.elems $ execute (initial ps) (steps ps) 0 (machine ps) Map.empty
+  Map.elems $ execute (initial ps) (steps ps) 0 Map.empty (machine ps)
 
 parse :: ParseState -> [String] -> ParseState
 parse ps [] = ps
-parse ps ["Begin", _, _, s] = ParseState s 0 "" 0 Map.empty
-parse ps ["Perform", _, _, _, _, n, _] =
-  ParseState (initial ps) (read n) "" 0 Map.empty
-parse ps ["In", "state", s] =
-  ParseState (initial ps) (steps ps) s 0 (machine ps)
-parse ps ["If", _, _, _, _, "0"] =
-  ParseState (initial ps) (steps ps) (current ps) 0 (machine ps)
-parse ps ["If", _, _, _, _, "1"] =
-  ParseState (initial ps) (steps ps) (current ps) 1 (machine ps)
-parse ps ["Write", _, _, n] =
-  ParseState (initial ps) (steps ps) (current ps) (value ps) up
+parse ps ["Begin", _, _, s] = ps {initial = s}
+parse ps ["Perform", _, _, _, _, n, _] = ps {steps = read n}
+parse ps ["In", "state", s] = ps {current = s}
+parse ps ["If", _, _, _, _, n] = ps {value = read n}
+parse ps ["Write", _, _, n] = ps {machine = machine'}
   where
+    machine' = Map.insert key action (machine ps)
     key = (current ps, value ps)
-    a = Action (read n) 0 ""
-    up = Map.insert key a (machine ps)
-parse ps ["Move", _, _, _, _, "left"] =
-  ParseState (initial ps) (steps ps) (current ps) (value ps) up
+    action = Action (read n) 0 ""
+parse ps ["Move", _, _, _, _, s] = ps {machine = machine'}
   where
+    machine' = Map.adjust updater key (machine ps)
     key = (current ps, value ps)
-    up = Map.adjust u key (machine ps)
-    u a = Action (write a) (-1) ""
-parse ps ["Move", _, _, _, _, "right"] =
-  ParseState (initial ps) (steps ps) (current ps) (value ps) up
+    updater action = action {movePointer = delta s}
+    delta "left" = -1
+    delta "right" = 1
+parse ps ["Continue", _, _, s] = ps {machine = machine'}
   where
+    machine' = Map.adjust updater key (machine ps)
     key = (current ps, value ps)
-    up = Map.adjust u key (machine ps)
-    u a = Action (write a) 1 ""
-parse ps ["Continue", _, _, s] =
-  ParseState (initial ps) (steps ps) (current ps) (value ps) up
-  where
-    key = (current ps, value ps)
-    up = Map.adjust u key (machine ps)
-    u a = Action (write a) (move a) s
+    updater action = action {nextState = s}
 
 stripUnnecessary '.' = ' '
 stripUnnecessary ':' = ' '
